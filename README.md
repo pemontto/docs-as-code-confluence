@@ -69,17 +69,20 @@ Pages and spaces use the Confluence Cloud v2 REST API. Attachment upload uses th
 
 The move to v2 is what makes service accounts work. It is not a tidy-up.
 
-Scope enforcement is per endpoint, not per API version. A service account credential carries granular scopes, and Atlassian maps those to some endpoints and not others. Measured against a live tenant:
+Scope enforcement is per endpoint, not per API version. A granular-scoped credential works against most of v1. What it cannot do is write page content there. Measured against a live tenant with a service account token holding `read:page`, `write:page`, `read:space`, `read:content-details`, `read:attachment` and `write:attachment`:
 
-| Endpoint | Result with a granular-scoped credential |
+| Endpoint | Result |
 | --- | --- |
-| `GET /wiki/rest/api/content` and the other v1 reads | 200 |
-| `POST /wiki/rest/api/content`, page create | 401, `{"code":401,"message":"Unauthorized; scope does not match"}` |
+| `GET /wiki/rest/api/content`, list and by id | 200 |
+| `GET /wiki/rest/api/space` | 200 |
+| `GET /wiki/rest/api/search`, CQL | 200 |
+| `GET /wiki/rest/api/content/{id}/child/attachment` | 200 |
 | `POST /wiki/rest/api/content/{id}/child/attachment` | 200 |
-| `POST /wiki/rest/api/content/{id}/child/attachment/{id}/data` | 200 |
-| the v2 page endpoints | 200 |
+| `POST /wiki/rest/api/content`, create a page | **401** `Unauthorized; scope does not match` |
+| `PUT /wiki/rest/api/content/{id}`, update a page | **401** `Unauthorized; scope does not match` |
+| `POST` and `PUT` on the v2 page endpoints | 200 |
 
-So the v1 page writes are what a service account cannot do, and that is what the upstream action depends on. The v1 attachment endpoints do accept a granular credential, under `write:attachment:confluence`, which is why attachment upload can stay on v1 while pages move to v2.
+Two endpoints out of that set are refused, and they are the two the upstream action needs. `write:page:confluence` authorises the v2 page endpoints but not their v1 equivalents; `write:attachment:confluence` authorises the v1 attachment endpoint, which has no v2 equivalent. That combination is why this action publishes pages through v2 and uploads attachments through v1.
 
 The failure is quiet, which is the dangerous part. Every read succeeds, so a run against v1 looks healthy right up to the first page write.
 
