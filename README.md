@@ -5,6 +5,12 @@ Publish a folder of documentation to Confluence.
 Create a Confluence Page for each markdown file. Each folder will create a _parent_ page to reflect
 the directory structure.
 
+> This is a fork of [Bhacaz/docs-as-code-confluence](https://github.com/Bhacaz/docs-as-code-confluence).
+> It adds Atlassian service account credentials, publishes through the Confluence v2 API, renders code
+> blocks and task lists as Confluence macros, and skips pages that have not changed. See
+> [Authentication](#authentication) and [API version](#api-version) for why the v2 move was necessary.
+> Use `pemontto/docs-as-code-confluence` in `uses:`, not the upstream repository.
+
 ## Parameters
 
 | Name                  | Description | Required |
@@ -88,7 +94,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Sync Docs as Code - Confluence
-        uses: Bhacaz/docs-as-code-confluence@v4
+        uses: pemontto/docs-as-code-confluence@v4
         with:
           folder: docs
           email: abc@xyz.com
@@ -102,7 +108,7 @@ With an Atlassian service account over the platform gateway:
 
 ```yml
       - name: Sync Docs as Code - Confluence
-        uses: Bhacaz/docs-as-code-confluence@v4
+        uses: pemontto/docs-as-code-confluence@v4
         with:
           folder: docs
           client-id: ${{ secrets.ATLASSIAN_OAUTH_CLIENT_ID }}
@@ -114,7 +120,8 @@ With an Atlassian service account over the platform gateway:
 
 ## Example of usage in a repository
 
-[Bhacaz/docs-as-code-confluence-demo](https://github.com/Bhacaz/docs-as-code-confluence-demo)
+[Bhacaz/docs-as-code-confluence-demo](https://github.com/Bhacaz/docs-as-code-confluence-demo), which
+uses the upstream action. The folder layout and the resulting page tree are the same here.
 
 ## Alternatives
 
