@@ -14,9 +14,9 @@ const FINGERPRINT = "docs-as-code sha256:";
 /**
  * Confluence Cloud client built on the v2 REST API.
  *
- * Pages and spaces use v2 throughout. Attachment uploads still use the v1
- * content API because v2 exposes attachments read-only: there is no v2
- * endpoint that creates or replaces attachment data.
+ * Pages and spaces use v2 throughout. Attachment upload uses the v1 content
+ * API because v2 has no endpoint that creates an attachment or replaces its
+ * data. The v2 attachment group can read and delete, but not upload.
  */
 class SyncConfluence {
   /**

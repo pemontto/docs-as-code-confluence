@@ -11,10 +11,9 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "dependencies": {
-    "@actions/core": "^1.11.1",
     "marked": "^18.0.9",
     "node-html-parser": "^9.0.1"
   },

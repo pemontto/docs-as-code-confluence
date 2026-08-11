@@ -1,4 +1,4 @@
-const core = require("@actions/core");
+const core = require("./utils/actions");
 const parser = require("node-html-parser");
 const path = require("path");
 
