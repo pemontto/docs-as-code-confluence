@@ -49,13 +49,13 @@ Everything else passes through as HTML: tables, nested lists, blockquotes, inlin
 
 ## Unchanged pages
 
-A page is only written when its content has actually changed. Without this, every run adds a version to every page, and the page history stops being able to tell you when the documentation last changed.
+The action writes a page only when the content changes. Before this, every run added a version to every page. The page history then could not show when the documentation last changed.
 
-The check is a fingerprint, not a comparison. Each write stamps `docs-as-code sha256:<hash of the published content>` as the version message, and the next run compares that against the hash it is about to publish. Attachments work the same way, with the fingerprint in the attachment comment, so an unchanged image is not reuploaded.
+The check uses a fingerprint. Each write stores `docs-as-code sha256:<hash of the content>` as the version message. The next run compares that against the hash of the content it will publish. Attachments work the same way, with the fingerprint in the attachment comment.
 
-Comparing the stored content directly does not work, and it is worth saying why. Confluence rewrites what it stores: it inserts `<tbody>`, re-encodes non-ASCII characters as named entities, quotes attributes, closes void elements, and normalises style values. Every one of those is semantically identical to what was sent, and undoing them means a growing pile of rules that a future Confluence change quietly invalidates.
+The action cannot compare the stored content directly. Confluence rewrites what it receives. It adds `<tbody>` to tables, turns `café` into `caf&eacute;`, puts quotes around attribute values, and closes tags such as `<br>`. The page means the same thing, but the text no longer matches, so a direct comparison reports a change on every page on every run.
 
-Two consequences worth knowing. A page edited by hand in Confluence loses the fingerprint, so the next run republishes it and the repository wins; that is intended, but it means manual edits are not preserved. And an attachment uploaded before this version, or by a person, has no fingerprint, so it is reuploaded once and then settles.
+This design has two effects. If a person edits a page in Confluence, the fingerprint no longer matches, and the next run publishes over that edit: the repository is the source of truth, so manual edits do not survive. An attachment with no fingerprint, from an older version or from a person, is uploaded once more and is then stable.
 
 ## API version
 

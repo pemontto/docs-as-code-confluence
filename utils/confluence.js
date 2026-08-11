@@ -2,16 +2,13 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-// Prefix for the fingerprint this action writes into a page's version message
-// and an attachment's comment, so unchanged content can be recognised without
-// comparing it.
+// Prefix for the fingerprint written into a page's version message and an
+// attachment's comment. It identifies content this action already published.
 //
 // Comparing the content itself does not work. Confluence rewrites what it
-// stores: it inserts <tbody>, re-encodes non-ASCII characters as named
-// entities, quotes attributes, closes void elements and normalises style
-// values. All of those are semantically identical to what was sent and none of
-// them can be undone reliably, so a content comparison reports a difference on
-// every page, every run. A fingerprint sidesteps the whole problem.
+// receives: it adds <tbody> to tables, turns café into caf&eacute;, quotes
+// attribute values and closes tags such as <br>. The page means the same thing
+// and the text does not match, so a comparison reports a change every run.
 const FINGERPRINT = "docs-as-code sha256:";
 
 /**
