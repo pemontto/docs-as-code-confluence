@@ -37,6 +37,8 @@ Required scopes: `read:page:confluence`, `write:page:confluence`, `read:space:co
 
 Pages and spaces use the Confluence Cloud v2 REST API. Attachment uploads still use the v1 content API, because v2 exposes attachments read-only and offers no endpoint that writes attachment data.
 
+The v2 move is what makes service accounts usable, not a tidy-up. A scoped token's granular scopes authorise v2 only, so `POST /wiki/rest/api/content` returns `{"code":401,"message":"Unauthorized; scope does not match"}` while every v1 read returns 200. A run against v1 therefore looks healthy until the first write. Attachment upload is the one v1 call left, and it is authorised by `write:attachment:confluence`.
+
 ## TODO
 
 * Renaming a file
