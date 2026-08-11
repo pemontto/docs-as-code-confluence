@@ -5,6 +5,7 @@ const path = require("path");
 const filesStructure = require("./utils/files");
 const SyncConfluence = require("./utils/confluence");
 const markdownToHtml = require("./utils/markdownToHtml");
+const { toStorageFormat } = require("./utils/confluenceStorage");
 const { resolveAuthorization, normaliseBaseUrl } = require("./utils/auth");
 
 const root = "./" + core.getInput("folder", { required: true }) + "/";
@@ -106,7 +107,11 @@ async function main() {
         let contentPageId = await findOrCreatePage(pageTitle, currentParentPageId);
         const data = await markdownToHtml(newRoot + filePath);
         let htmlContent = await handleAttachments(contentPageId, data);
-        await syncConfluence.putContent(contentPageId, pageTitle, htmlContent);
+        await syncConfluence.putContent(
+          contentPageId,
+          pageTitle,
+          toStorageFormat(htmlContent)
+        );
       } else {
         currentParentPageId = await findOrCreatePage(subPath, currentParentPageId);
       }

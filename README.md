@@ -33,6 +33,20 @@ Scoped tokens and OAuth tokens only work against `https://api.atlassian.com/ex/c
 
 Required scopes: `read:page:confluence`, `write:page:confluence`, `read:space:confluence`, `read:attachment:confluence`, and `write:attachment:confluence`. You can drop `read:space:confluence` if you also supply `space-id`.
 
+## Confluence rendering
+
+Confluence storage format is not HTML. Three things markdown produces have no HTML form Confluence renders, and Confluence drops them silently rather than reporting an error, so the page publishes looking subtly wrong. Each is converted to the macro Confluence does render.
+
+| Markdown | Plain HTML result | What this action emits |
+| --- | --- | --- |
+| Fenced code block | `<pre><code>`, shown unstyled with no highlighting | `code` macro, with `language` set from the fence info string |
+| `- [x] task` | `<input type="checkbox">` is stripped, leaving a plain bullet with the ticked state lost | `task-list` macro, preserving complete and incomplete |
+| `<details>`/`<summary>` | both tags stripped, leaving the summary as a stray line above the body | `expand` macro, with the summary as its title |
+
+Code block bodies travel inside a CDATA section, so the published code is byte-identical to the source file and needs no escaping. A fence language Confluence does not recognise is omitted rather than guessed at, which gives a plain code block instead of a broken one.
+
+Everything else passes through as HTML: tables, nested lists, blockquotes, inline HTML, links, images, and unicode.
+
 ## API version
 
 Pages and spaces use the Confluence Cloud v2 REST API. Attachment uploads still use the v1 content API, because v2 exposes attachments read-only and offers no endpoint that writes attachment data.
