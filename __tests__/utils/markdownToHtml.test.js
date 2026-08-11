@@ -3,7 +3,9 @@ const Marked = require('marked');
 const markdownForFile = require('../../utils/markdownToHtml');
 
 jest.mock('fs/promises');
-jest.mock('marked');
+// A factory mock, not an automock. marked ships ESM that jest cannot parse under
+// CommonJS, and the automock loads the real module to read its shape.
+jest.mock('marked', () => ({ parse: jest.fn() }));
 
 describe('markdownForFile', () => {
   it('reads file and parses markdown when file exists', async () => {
