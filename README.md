@@ -47,6 +47,16 @@ Code block bodies travel inside a CDATA section, so the published code is byte-i
 
 Everything else passes through as HTML: tables, nested lists, blockquotes, inline HTML, links, images, and unicode.
 
+## Unchanged pages
+
+A page is only written when its content has actually changed. Without this, every run adds a version to every page, and the page history stops being able to tell you when the documentation last changed.
+
+The check is a fingerprint, not a comparison. Each write stamps `docs-as-code sha256:<hash of the published content>` as the version message, and the next run compares that against the hash it is about to publish. Attachments work the same way, with the fingerprint in the attachment comment, so an unchanged image is not reuploaded.
+
+Comparing the stored content directly does not work, and it is worth saying why. Confluence rewrites what it stores: it inserts `<tbody>`, re-encodes non-ASCII characters as named entities, quotes attributes, closes void elements, and normalises style values. Every one of those is semantically identical to what was sent, and undoing them means a growing pile of rules that a future Confluence change quietly invalidates.
+
+Two consequences worth knowing. A page edited by hand in Confluence loses the fingerprint, so the next run republishes it and the repository wins; that is intended, but it means manual edits are not preserved. And an attachment uploaded before this version, or by a person, has no fingerprint, so it is reuploaded once and then settles.
+
 ## API version
 
 Pages and spaces use the Confluence Cloud v2 REST API. Attachment uploads still use the v1 content API, because v2 exposes attachments read-only and offers no endpoint that writes attachment data.
@@ -57,7 +67,6 @@ The v2 move is what makes service accounts usable, not a tidy-up. A scoped token
 
 * Renaming a file
 * Moving/Removing a file
-* Not updating Confluence pages when there is no change
 * Add commit link to the new page version
 * Add markdown images with url source
 

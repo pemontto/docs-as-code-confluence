@@ -4,8 +4,9 @@ const path = require("path");
 
 const filesStructure = require("./utils/files");
 const SyncConfluence = require("./utils/confluence");
+const { attachmentMatches } = require("./utils/confluence");
 const markdownToHtml = require("./utils/markdownToHtml");
-const { toStorageFormat } = require("./utils/confluenceStorage");
+const { toStorageFormat, escapeXml } = require("./utils/confluenceStorage");
 const { resolveAuthorization, normaliseBaseUrl } = require("./utils/auth");
 
 const root = "./" + core.getInput("folder", { required: true }) + "/";
@@ -38,6 +39,11 @@ async function uploadAttachment(attachmentSource, pageId) {
   if (existingAttachments) {
     for (let attachment of existingAttachments) {
       if (attachment.title === path.basename(attachmentSource)) {
+        // Reuploading an identical image adds an attachment version and shows
+        // up as activity on the page, so skip when the bytes already match.
+        if (attachmentMatches(attachment, attachmentSource)) {
+          return attachment;
+        }
         return await syncConfluence.updateAttachment(
           pageId,
           attachment.id,
@@ -62,9 +68,14 @@ async function handleAttachments(contentPageId, data) {
       attachmentSource.replace("..", "."),
       contentPageId
     );
+    // The filename must be quoted. Confluence repairs the unquoted form on the
+    // way in, which is invalid XML, and the repaired copy then never matches
+    // what a later run sends.
     image.replaceWith(
       parser.parse(
-        '<ac:image><ri:attachment ri:filename=' + attachment.title + " /></ac:image>"
+        '<ac:image><ri:attachment ri:filename="' +
+          escapeXml(attachment.title) +
+          '" /></ac:image>'
       )
     );
   }

@@ -1,5 +1,18 @@
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+
+// Prefix for the fingerprint this action writes into a page's version message
+// and an attachment's comment, so unchanged content can be recognised without
+// comparing it.
+//
+// Comparing the content itself does not work. Confluence rewrites what it
+// stores: it inserts <tbody>, re-encodes non-ASCII characters as named
+// entities, quotes attributes, closes void elements and normalises style
+// values. All of those are semantically identical to what was sent and none of
+// them can be undone reliably, so a content comparison reports a difference on
+// every page, every run. A fingerprint sidesteps the whole problem.
+const FINGERPRINT = "docs-as-code sha256:";
 
 /**
  * Confluence Cloud client built on the v2 REST API.
@@ -94,10 +107,9 @@ class SyncConfluence {
     return match ? match.id : undefined;
   }
 
-  async getPageVersion(pageId) {
+  async getPage(pageId) {
     const url = this.baseUrl + "/api/v2/pages/" + encodeURIComponent(pageId);
-    const data = await this.request("GET", url);
-    return data.version.number;
+    return this.request("GET", url);
   }
 
   /**
@@ -119,11 +131,33 @@ class SyncConfluence {
   }
 
   /**
-   * Replace a page's body. The version is read immediately before the write so
-   * concurrent edits surface as a 409 rather than being silently overwritten.
+   * Replace a page's body, unless the page already says exactly this.
+   *
+   * The page is read immediately before the write, both to get the version,
+   * so concurrent edits surface as a 409 rather than being silently
+   * overwritten, and to compare the current content. Skipping an unchanged
+   * page keeps its version history meaningful: without this, every run adds a
+   * version to every page and the page history stops showing when the
+   * documentation actually changed.
+   *
+   * @returns {Promise<boolean>} true when the page was written
    */
   async putContent(pageId, title, content) {
-    const version = await this.getPageVersion(pageId);
+    const current = await this.getPage(pageId);
+    const version = current.version.number;
+    const fingerprint = FINGERPRINT + sha256(content);
+
+    // A page edited by hand in Confluence carries whatever message that edit
+    // left behind, so it will not match and the run republishes it. That is
+    // the wanted behaviour: the repository is the source of truth.
+    if (
+      current.title === title &&
+      (current.version || {}).message === fingerprint
+    ) {
+      console.log("No change, skipped page %s", title);
+      return false;
+    }
+
     const data = await this.request(
       "PUT",
       this.baseUrl + "/api/v2/pages/" + encodeURIComponent(pageId),
@@ -133,7 +167,7 @@ class SyncConfluence {
           status: "current",
           title: title,
           body: { representation: "storage", value: content },
-          version: { number: version + 1, message: "Published by docs-as-code" },
+          version: { number: version + 1, message: fingerprint },
         },
       }
     );
@@ -143,7 +177,7 @@ class SyncConfluence {
       "Uploaded content successfully to page %s",
       (link.base || this.baseUrl) + (link.webui || "/pages/" + pageId)
     );
-    return data;
+    return true;
   }
 
   async getAttachments(pageId) {
@@ -193,7 +227,32 @@ function attachmentForm(source) {
   const bytes = fs.readFileSync(source);
   form.set("file", new Blob([bytes]), path.basename(source));
   form.set("minorEdit", "true");
+  // The fingerprint rides along in the comment so a later run can tell whether
+  // the local file still matches the stored one without downloading it.
+  form.set("comment", FINGERPRINT + sha256(bytes));
   return form;
+}
+
+function sha256(bytes) {
+  return crypto.createHash("sha256").update(bytes).digest("hex");
+}
+
+/**
+ * Whether an attachment already holds this exact file.
+ *
+ * An attachment uploaded before fingerprinting, or by a person through the UI,
+ * has no fingerprint to compare, so it is treated as changed and reuploaded.
+ * That costs one upload and then settles.
+ *
+ * @param {Object} attachment - a v2 attachment record
+ * @param {string} source - path to the local file
+ */
+function attachmentMatches(attachment, source) {
+  const comment = (attachment && attachment.comment) || "";
+  if (!comment.startsWith(FINGERPRINT)) {
+    return false;
+  }
+  return comment.slice(FINGERPRINT.length) === sha256(fs.readFileSync(source));
 }
 
 function stripQuery(url) {
@@ -206,3 +265,5 @@ function truncate(text) {
 }
 
 module.exports = SyncConfluence;
+module.exports.attachmentMatches = attachmentMatches;
+module.exports.FINGERPRINT = FINGERPRINT;
