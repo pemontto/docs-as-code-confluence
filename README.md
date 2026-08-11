@@ -67,7 +67,21 @@ This design has two effects. If a person edits a page in Confluence, the fingerp
 
 Pages and spaces use the Confluence Cloud v2 REST API. Attachment upload uses the v1 content API, because v2 has no endpoint that creates an attachment or replaces its data. The [v2 attachment group](https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-attachment/) is GET and DELETE only.
 
-The move to v2 is what makes service accounts work. It is not a tidy-up. The granular scopes on a scoped token authorise v2 only. Every v1 read returns 200, but `POST /wiki/rest/api/content` returns `{"code":401,"message":"Unauthorized; scope does not match"}`. A run against v1 looks healthy until the first write. Attachment upload is the one v1 call that remains, and `write:attachment:confluence` authorises it.
+The move to v2 is what makes service accounts work. It is not a tidy-up.
+
+Scope enforcement is per endpoint, not per API version. A service account credential carries granular scopes, and Atlassian maps those to some endpoints and not others. Measured against a live tenant:
+
+| Endpoint | Result with a granular-scoped credential |
+| --- | --- |
+| `GET /wiki/rest/api/content` and the other v1 reads | 200 |
+| `POST /wiki/rest/api/content`, page create | 401, `{"code":401,"message":"Unauthorized; scope does not match"}` |
+| `POST /wiki/rest/api/content/{id}/child/attachment` | 200 |
+| `POST /wiki/rest/api/content/{id}/child/attachment/{id}/data` | 200 |
+| the v2 page endpoints | 200 |
+
+So the v1 page writes are what a service account cannot do, and that is what the upstream action depends on. The v1 attachment endpoints do accept a granular credential, under `write:attachment:confluence`, which is why attachment upload can stay on v1 while pages move to v2.
+
+The failure is quiet, which is the dangerous part. Every read succeeds, so a run against v1 looks healthy right up to the first page write.
 
 ## TODO
 
