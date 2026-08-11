@@ -9,17 +9,32 @@ inputs:
     description: "Folder containing the documentation to publish."
     required: true
   username:
-    description: "Confluence username or email"
-    required: true
+    description: "Confluence username or email. Use with `password`. For an Atlassian service account, prefer `email` and `api-token`."
+    required: false
   password:
-    description: "Confluence password or API key"
-    required: true
+    description: "Confluence password or API token. Use with `username`."
+    required: false
+  email:
+    description: "Atlassian account or service account email, for example bot-xxxx@serviceaccount.atlassian.com. Use with `api-token`."
+    required: false
+  api-token:
+    description: "Atlassian API token. Sent as Basic auth alongside `email`, or as a Bearer token when `email` is omitted."
+    required: false
+  client-id:
+    description: "OAuth 2.0 client id for an Atlassian service account. Use with `client-secret`. Takes precedence over the other credential inputs."
+    required: false
+  client-secret:
+    description: "OAuth 2.0 client secret for an Atlassian service account. Use with `client-id`."
+    required: false
   confluence-base-url:
-    description: "Your Confluence url"
+    description: "Your Confluence url, with or without the trailing /wiki. Either https://mysite.atlassian.net or https://api.atlassian.com/ex/confluence/<cloudId>."
     required: true
   space-key:
     description: "Confluence space key to publish the documentation"
     required: true
+  space-id:
+    description: "Numeric Confluence space id. Optional. Supply it to skip the space lookup, which needs the read:space scope."
+    required: false
   parent-page-id:
     description: "Page id under which the documentation will be published"
     required: true

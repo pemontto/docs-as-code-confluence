@@ -1,45 +1,33 @@
-const fs = require('fs');
+const fs = require('fs/promises');
 const Marked = require('marked');
 const markdownForFile = require('../../utils/markdownToHtml');
 
-jest.mock('fs');
+jest.mock('fs/promises');
 jest.mock('marked');
 
 describe('markdownForFile', () => {
-  it('reads file and parses markdown when file exists', (done) => {
+  it('reads file and parses markdown when file exists', async () => {
     const mockData = '# Hello World';
     const mockHtml = '<h1 id="hello-world">Hello World</h1>\n';
-    fs.readFile.mockImplementationOnce((path, options, cb) => cb(null, mockData));
-    Marked.parse.mockImplementationOnce((data, cb) => cb(null, mockHtml));
+    fs.readFile.mockResolvedValueOnce(mockData);
+    Marked.parse.mockReturnValueOnce(mockHtml);
 
-    markdownForFile('path/to/file', (err, data) => {
-      expect(err).toBeNull();
-      expect(data).toBe(mockHtml);
-      done();
-    });
+    await expect(markdownForFile('path/to/file')).resolves.toBe(mockHtml);
+    expect(Marked.parse).toHaveBeenCalledWith(mockData);
   });
 
-  it('returns error when file does not exist', (done) => {
+  it('rejects when file does not exist', async () => {
     const mockError = new Error('File not found');
-    fs.readFile.mockImplementationOnce((path, options, cb) => cb(mockError));
+    fs.readFile.mockRejectedValueOnce(mockError);
 
-    markdownForFile('path/to/nonexistent/file', (err, data) => {
-      expect(err).toEqual(mockError);
-      expect(data).toBeUndefined();
-      done();
-    });
+    await expect(markdownForFile('path/to/nonexistent/file')).rejects.toThrow('File not found');
   });
 
-  it('returns error when markdown parsing fails', (done) => {
-    const mockData = '# Hello World';
+  it('rejects when markdown parsing fails', async () => {
     const mockError = new Error('Markdown parsing error');
-    fs.readFile.mockImplementationOnce((path, options, cb) => cb(null, mockData));
-    Marked.parse.mockImplementationOnce((data, cb) => cb(mockError));
+    fs.readFile.mockResolvedValueOnce('# Hello World');
+    Marked.parse.mockImplementationOnce(() => { throw mockError; });
 
-    markdownForFile('path/to/file', (err, data) => {
-      expect(err).toEqual(mockError);
-      expect(data).toBeUndefined();
-      done();
-    });
+    await expect(markdownForFile('path/to/file')).rejects.toThrow('Markdown parsing error');
   });
 });
