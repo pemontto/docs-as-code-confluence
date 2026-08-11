@@ -41,7 +41,7 @@ Required scopes: `read:page:confluence`, `write:page:confluence`, `read:space:co
 
 ## Confluence rendering
 
-Confluence storage format is not HTML. Three things markdown produces have no HTML form Confluence renders, and Confluence drops them silently rather than reporting an error, so the page publishes looking subtly wrong. Each is converted to the macro Confluence does render.
+Confluence storage format is not HTML. Markdown produces three things that Confluence cannot render, and Confluence discards them without an error. The page publishes, and it looks wrong. This action converts each one into the macro that Confluence does render.
 
 | Markdown | Plain HTML result | What this action emits |
 | --- | --- | --- |
@@ -49,9 +49,9 @@ Confluence storage format is not HTML. Three things markdown produces have no HT
 | `- [x] task` | `<input type="checkbox">` is stripped, leaving a plain bullet with the ticked state lost | `task-list` macro, preserving complete and incomplete |
 | `<details>`/`<summary>` | both tags stripped, leaving the summary as a stray line above the body | `expand` macro, with the summary as its title |
 
-Code block bodies travel inside a CDATA section, so the published code is byte-identical to the source file and needs no escaping. A fence language Confluence does not recognise is omitted rather than guessed at, which gives a plain code block instead of a broken one.
+Code goes inside a CDATA section, so the published code matches the source file exactly and needs no escaping. If Confluence does not know the fence language, the action sends no language. You get a plain code block instead of a broken one.
 
-Everything else passes through as HTML: tables, nested lists, blockquotes, inline HTML, links, images, and unicode.
+Everything else publishes as HTML: tables, nested lists, blockquotes, inline HTML, links, images, and unicode.
 
 ## Unchanged pages
 
@@ -67,7 +67,7 @@ This design has two effects. If a person edits a page in Confluence, the fingerp
 
 Pages and spaces use the Confluence Cloud v2 REST API. Attachment uploads still use the v1 content API, because v2 exposes attachments read-only and offers no endpoint that writes attachment data.
 
-The v2 move is what makes service accounts usable, not a tidy-up. A scoped token's granular scopes authorise v2 only, so `POST /wiki/rest/api/content` returns `{"code":401,"message":"Unauthorized; scope does not match"}` while every v1 read returns 200. A run against v1 therefore looks healthy until the first write. Attachment upload is the one v1 call left, and it is authorised by `write:attachment:confluence`.
+The move to v2 is what makes service accounts work. It is not a tidy-up. The granular scopes on a scoped token authorise v2 only. Every v1 read returns 200, but `POST /wiki/rest/api/content` returns `{"code":401,"message":"Unauthorized; scope does not match"}`. A run against v1 looks healthy until the first write. Attachment upload is the one v1 call that remains, and `write:attachment:confluence` authorises it.
 
 ## TODO
 
